@@ -206,7 +206,7 @@ impl<'a> ExtensionLogic for ForgeExtension<'a> {
                     .increment_linear_factor_by(&SyscallSelector::Deploy, calldata.len());
 
                 handle_declare_deploy_result(deploy(
-                    syscall_handler,
+                    &mut syscall_handler.base,
                     cheatnet_runtime.extension.cheatnet_state,
                     &class_hash,
                     &calldata,
@@ -224,7 +224,7 @@ impl<'a> ExtensionLogic for ForgeExtension<'a> {
                     .increment_linear_factor_by(&SyscallSelector::Deploy, calldata.len());
 
                 handle_declare_deploy_result(deploy_at(
-                    syscall_handler,
+                    &mut syscall_handler.base,
                     cheatnet_runtime.extension.cheatnet_state,
                     &class_hash,
                     &calldata,
@@ -592,6 +592,23 @@ impl<'a> ForgeExtension<'a> {
                     *state,
                     &contract_name,
                     self.contracts_data,
+                ))
+                .map(Into::into)
+                .map_err(Into::into);
+            }
+            "deploy" => {
+                let mut input_reader = BufferReader::new(input);
+                let class_hash = input_reader.read()?;
+                let calldata: Vec<_> = input_reader.read()?;
+
+                let cheatnet_runtime = &mut runtime.runtime;
+                let syscall_handler = &mut cheatnet_runtime.runtime.syscall_handler;
+
+                return handle_declare_deploy_result(deploy(
+                    &mut syscall_handler.base,
+                    cheatnet_runtime.extension.cheatnet_state,
+                    &class_hash,
+                    &calldata,
                 ))
                 .map(Into::into)
                 .map_err(Into::into);

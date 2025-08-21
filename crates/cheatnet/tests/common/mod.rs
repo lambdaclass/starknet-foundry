@@ -117,7 +117,7 @@ pub fn deploy_contract(
     );
 
     let (contract_address, _retdata) = deploy(
-        &mut syscall_hint_processor,
+        &mut syscall_hint_processor.base,
         cheatnet_state,
         &class_hash,
         calldata,
@@ -148,7 +148,7 @@ pub fn deploy_wrapper(
     );
 
     let (contract_address, _retdata) = deploy(
-        &mut syscall_hint_processor,
+        &mut syscall_hint_processor.base,
         cheatnet_state,
         class_hash,
         calldata,
@@ -179,7 +179,7 @@ pub fn deploy_at_wrapper(
     );
 
     let (contract_address, _retdata) = deploy_at(
-        &mut syscall_hint_processor,
+        &mut syscall_hint_processor.base,
         cheatnet_state,
         class_hash,
         calldata,
@@ -227,7 +227,7 @@ pub fn call_contract(
     );
 
     call_entry_point(
-        &mut syscall_hint_processor,
+        &mut syscall_hint_processor.base,
         cheatnet_state,
         entry_point,
         &AddressOrClassHash::ContractAddress(*contract_address),

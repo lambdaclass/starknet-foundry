@@ -3,7 +3,7 @@ use crate::runtime_extensions::call_to_blockifier_runtime_extension::rpc::{
 };
 use anyhow::Result;
 use blockifier::execution::entry_point::ConstructorContext;
-use blockifier::execution::syscalls::hint_processor::SyscallHintProcessor;
+use blockifier::execution::syscalls::syscall_base::SyscallHandlerBase;
 use runtime::EnhancedHintError;
 use std::sync::Arc;
 
@@ -20,14 +20,13 @@ use conversions::string::TryFromHexStr;
 use runtime::starknet::constants::TEST_ADDRESS;
 
 pub fn deploy_at(
-    syscall_handler: &mut SyscallHintProcessor,
+    syscall_handler_base: &mut SyscallHandlerBase,
     cheatnet_state: &mut CheatnetState,
     class_hash: &ClassHash,
     calldata: &[Felt],
     contract_address: ContractAddress,
 ) -> Result<(ContractAddress, Vec<Felt>), CheatcodeError> {
-    if let Ok(class_hash) = syscall_handler
-        .base
+    if let Ok(class_hash) = syscall_handler_base
         .state
         .get_class_hash_at(contract_address)
         && class_hash != ClassHash::default()
@@ -47,9 +46,9 @@ pub fn deploy_at(
     let calldata = Calldata(Arc::new(calldata.to_vec()));
 
     let exec_result = cheated_syscalls::execute_deployment(
-        syscall_handler.base.state,
+        syscall_handler_base.state,
         cheatnet_state,
-        syscall_handler.base.context,
+        syscall_handler_base.context,
         &ctor_context,
         calldata,
         i64::MAX as u64,
@@ -59,7 +58,7 @@ pub fn deploy_at(
     match exec_result {
         Ok(call_info) => {
             let retdata = call_info.execution.retdata.0.clone();
-            syscall_handler.base.inner_calls.push(call_info);
+            syscall_handler_base.inner_calls.push(call_info);
             Ok((contract_address, retdata))
         }
         Err(err) => {
@@ -73,7 +72,7 @@ pub fn deploy_at(
 }
 
 pub fn deploy(
-    syscall_handler: &mut SyscallHintProcessor,
+    syscall_handler_base: &mut SyscallHandlerBase,
     cheatnet_state: &mut CheatnetState,
     class_hash: &ClassHash,
     calldata: &[Felt],
@@ -81,7 +80,7 @@ pub fn deploy(
     let contract_address = cheatnet_state.precalculate_address(class_hash, calldata);
 
     deploy_at(
-        syscall_handler,
+        syscall_handler_base,
         cheatnet_state,
         class_hash,
         calldata,
