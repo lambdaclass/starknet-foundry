@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 use blockifier::execution::entry_point::{CallEntryPoint, CallType};
 use blockifier::execution::execution_utils::felt_from_ptr;
@@ -11,12 +12,15 @@ use blockifier::execution::{
     execution_utils::ReadOnlySegment,
     syscalls::vm_syscall_utils::{SyscallRequest, SyscallResponse, SyscallResponseWrapper},
 };
+use cairo_native::starknet::SyscallResult;
 use cairo_vm::types::relocatable::MaybeRelocatable;
 use cairo_vm::vm::{errors::hint_errors::HintError, vm_core::VirtualMachine};
-use runtime::native::{NativeExtendedRuntime, NativeExtensionLogic};
+use conversions::serde::serialize::SerializeToFeltVec;
+use runtime::native::{NativeExtendedRuntime, NativeExtensionLogic, NativeSyscallHandlingResult};
 use runtime::{ExtendedRuntime, ExtensionLogic, SyscallHandlingResult, SyscallPtrAccess};
 use starknet_api::contract_class::EntryPointType;
-use starknet_api::core::ContractAddress;
+use starknet_api::core::{ContractAddress, EntryPointSelector};
+use starknet_api::transaction::fields::Calldata;
 
 use crate::state::CheatnetState;
 
@@ -86,6 +90,46 @@ impl<'a> ExtensionLogic for CallToBlockifierExtension<'a> {
 
 impl<'a> NativeExtensionLogic for CallToBlockifierExtension<'a> {
     type Runtime = &'a mut NativeExtendedRuntime<CheatableStarknetRuntimeExtension<'a>>;
+
+    fn handle_call_contract(
+        &mut self,
+        address: cairo_vm::Felt252,
+        entry_point_selector: cairo_vm::Felt252,
+        calldata: &[cairo_vm::Felt252],
+        remaining_gas: &mut u64,
+        runtime: &mut Self::Runtime,
+    ) -> NativeSyscallHandlingResult<SyscallResult<Vec<cairo_vm::Felt252>>> {
+        let contract_address = ContractAddress::try_from(address).unwrap();
+
+        let entry_point = CallEntryPoint {
+            class_hash: None,
+            code_address: Some(contract_address),
+            entry_point_type: EntryPointType::External,
+            entry_point_selector: EntryPointSelector(entry_point_selector),
+            calldata: Calldata(Arc::new(calldata.to_vec())),
+            storage_address: contract_address,
+            caller_address: TryFromHexStr::try_from_hex_str(TEST_ADDRESS).unwrap(),
+            call_type: CallType::Call,
+            initial_gas: i64::MAX as u64,
+        };
+
+        let result = call_entry_point(
+            &mut runtime.runtime.syscall_handler.base,
+            runtime.extension.cheatnet_state,
+            entry_point,
+            &AddressOrClassHash::ContractAddress(contract_address),
+        );
+
+        match result {
+            CallResult::Success { ret_data } => NativeSyscallHandlingResult::Handled(Ok(ret_data)),
+            CallResult::Failure(call_failure) => {
+                NativeSyscallHandlingResult::Handled(Err(match call_failure {
+                    CallFailure::Panic { panic_data } => panic_data,
+                    CallFailure::Error { msg } => msg.serialize_to_vec(),
+                }))
+            }
+        }
+    }
 }
 
 trait ExecuteCall
@@ -120,7 +164,7 @@ impl ExecuteCall for CallContractRequest {
         };
 
         call_entry_point(
-            syscall_handler,
+            &mut syscall_handler.base,
             cheatnet_state,
             entry_point,
             &AddressOrClassHash::ContractAddress(contract_address),
@@ -149,7 +193,7 @@ impl ExecuteCall for LibraryCallRequest {
         };
 
         call_entry_point(
-            syscall_handler,
+            &mut syscall_handler.base,
             cheatnet_state,
             entry_point,
             &AddressOrClassHash::ClassHash(class_hash),
