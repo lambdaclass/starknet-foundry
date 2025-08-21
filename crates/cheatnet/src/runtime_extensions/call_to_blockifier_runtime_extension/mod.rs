@@ -96,7 +96,7 @@ impl<'a> NativeExtensionLogic for CallToBlockifierExtension<'a> {
         address: cairo_vm::Felt252,
         entry_point_selector: cairo_vm::Felt252,
         calldata: &[cairo_vm::Felt252],
-        remaining_gas: &mut u64,
+        _remaining_gas: &mut u64,
         runtime: &mut Self::Runtime,
     ) -> NativeSyscallHandlingResult<SyscallResult<Vec<cairo_vm::Felt252>>> {
         let contract_address = ContractAddress::try_from(address).unwrap();
