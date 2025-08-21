@@ -32,7 +32,7 @@ fn fib(a: felt252, b: felt252, n: felt252) -> felt252 {
 
 #[cfg(test)]
 mod tests {
-    use super::{factorial, init_dict};
+    use super::{factorial, init_dict, fib};
 
     #[test]
     fn test_factorial() {
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_fibonacci() {
-        assert_eq!(fib(0, 1, 10), 55, 'invalid result');
-        assert_eq!(fib(0, 1, 2000000), 0x79495858064f7881b9eff3a923642b2990b5a4342da5470eb2251df58d9acfb, 'invalid result');
+        assert_eq!(fib(0, 1, 10), 55, "invalid result");
+        assert_eq!(fib(0, 1, 2000000), 0x79495858064f7881b9eff3a923642b2990b5a4342da5470eb2251df58d9acfb, "invalid result");
     }
 }
