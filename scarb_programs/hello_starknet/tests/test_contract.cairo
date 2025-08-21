@@ -13,12 +13,14 @@ fn deploy_contract(name: ByteArray) -> ContractAddress {
     contract_address
 }
 
-pub fn factorial(a: felt252) -> felt252 {
-    if a == 1 || a == 0 {
-        return 1;
+fn factorial(value: felt252, n: felt252) -> felt252 {
+    if (n == 1) {
+        value
+    } else {
+        factorial(value * n, n - 1)
     }
-    return a * factorial(a - 1);
 }
+
 #[test]
 fn test_factorial() {
     assert_eq!(factorial(2), 2, "bad factorial");
