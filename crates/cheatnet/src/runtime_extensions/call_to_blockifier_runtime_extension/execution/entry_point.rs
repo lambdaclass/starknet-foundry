@@ -1,4 +1,5 @@
 use super::cairo1_execution::execute_entry_point_call_cairo1;
+use super::native_execution::execute_entry_point_call_native;
 use crate::runtime_extensions::call_to_blockifier_runtime_extension::execution::deprecated::cairo0_execution::execute_entry_point_call_cairo0;
 use crate::runtime_extensions::call_to_blockifier_runtime_extension::rpc::{AddressOrClassHash, CallResult};
 use crate::runtime_extensions::call_to_blockifier_runtime_extension::CheatnetState;
@@ -172,8 +173,14 @@ pub fn execute_call_entry_point(
             cheatnet_state,
             context,
         ),
-        RunnableCompiledClass::V1Native(_) => {
-            todo!("execute inner call with Cairo Native")
+        RunnableCompiledClass::V1Native(native_compiled_class_v1) => {
+            execute_entry_point_call_native(
+                entry_point.clone(),
+                &native_compiled_class_v1,
+                state,
+                cheatnet_state,
+                context,
+            )
         }
     };
     context

@@ -9,7 +9,7 @@ use blockifier::execution::{
     call_info::CallInfo,
     entry_point::{CallType, EntryPointExecutionResult},
     errors::{EntryPointExecutionError, PreExecutionError},
-    syscalls::hint_processor::SyscallHintProcessor,
+    syscalls::{hint_processor::SyscallHintProcessor, syscall_base::SyscallHandlerBase},
 };
 use blockifier::execution::{
     entry_point::CallEntryPoint, syscalls::vm_syscall_utils::SyscallUsageMap,
@@ -192,7 +192,7 @@ pub fn call_l1_handler(
     };
 
     call_entry_point(
-        syscall_handler,
+        &mut syscall_handler.base,
         cheatnet_state,
         entry_point,
         &AddressOrClassHash::ContractAddress(*contract_address),
@@ -200,23 +200,23 @@ pub fn call_l1_handler(
 }
 
 pub fn call_entry_point(
-    syscall_handler: &mut SyscallHintProcessor,
+    syscall_handler: &mut SyscallHandlerBase,
     cheatnet_state: &mut CheatnetState,
     mut entry_point: CallEntryPoint,
     starknet_identifier: &AddressOrClassHash,
 ) -> CallResult {
     let exec_result = execute_call_entry_point(
         &mut entry_point,
-        syscall_handler.base.state,
+        syscall_handler.state,
         cheatnet_state,
-        syscall_handler.base.context,
+        syscall_handler.context,
         false,
     );
 
     let result = CallResult::from_execution_result(&exec_result, starknet_identifier);
 
     if let Ok(call_info) = exec_result {
-        syscall_handler.base.inner_calls.push(call_info);
+        syscall_handler.inner_calls.push(call_info);
     }
 
     result

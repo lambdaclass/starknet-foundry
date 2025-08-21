@@ -5,7 +5,12 @@ use crate::runtime_extensions::forge_runtime_extension::{
 };
 use anyhow::{Context, Result};
 use blockifier::execution::contract_class::{CompiledClassV1, RunnableCompiledClass};
+use blockifier::execution::native::contract_class::NativeCompiledClassV1;
 use blockifier::state::{errors::StateError, state_api::State};
+use cairo_lang_starknet_classes::contract_class::{
+    ContractClass, version_id_from_serialized_sierra_program,
+};
+use cairo_native::executor::AotContractExecutor;
 use conversions::IntoConv;
 use conversions::serde::serialize::CairoSerialize;
 use starknet::core::types::contract::SierraClass;
@@ -32,7 +37,33 @@ pub fn declare(
         get_current_sierra_version(),
     )
     .expect("Failed to read contract class from json");
-    let contract_class = RunnableCompiledClass::V1(contract_class);
+
+    // TODO: We are compiling a contract class with Native each time its
+    // declared. We should compile it once, like we do with CASM.
+
+    let sierra_contract_class: ContractClass =
+        serde_json::from_str(&contract_artifact.sierra).map_err(EnhancedHintError::from)?;
+
+    let (sierra_version, _) =
+        version_id_from_serialized_sierra_program(&sierra_contract_class.sierra_program)
+            .map_err(anyhow::Error::from)
+            .map_err(EnhancedHintError::from)?;
+
+    let aot_executor = AotContractExecutor::new(
+        &sierra_contract_class
+            .extract_sierra_program()
+            .map_err(anyhow::Error::from)
+            .map_err(EnhancedHintError::from)?,
+        &sierra_contract_class.entry_points_by_type,
+        sierra_version,
+        cairo_native::OptLevel::Default,
+        None,
+    )
+    .map_err(anyhow::Error::from)
+    .map_err(EnhancedHintError::from)?;
+
+    let contract_class =
+        RunnableCompiledClass::V1Native(NativeCompiledClassV1::new(aot_executor, contract_class));
 
     let class_hash = *contracts_data
         .get_class_hash(contract_name)
