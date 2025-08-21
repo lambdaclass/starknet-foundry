@@ -7,6 +7,8 @@ use cairo_native::starknet::{
 use cairo_vm::Felt252;
 use conversions::serde::serialize::SerializeToFeltVec;
 
+use crate::CheatcodeHandlingResult;
+
 pub struct NativeExtendedRuntime<E: NativeExtensionLogic> {
     pub extension: E,
     pub runtime: E::Runtime,
@@ -15,6 +17,15 @@ pub struct NativeExtendedRuntime<E: NativeExtensionLogic> {
 pub enum NativeSyscallHandlingResult<T> {
     Forwarded,
     Handled(T),
+}
+
+impl From<CheatcodeHandlingResult> for NativeSyscallHandlingResult<Vec<Felt252>> {
+    fn from(value: CheatcodeHandlingResult) -> Self {
+        match value {
+            CheatcodeHandlingResult::Forwarded => Self::Forwarded,
+            CheatcodeHandlingResult::Handled(felts) => Self::Handled(felts),
+        }
+    }
 }
 
 pub trait NativeExtensionLogic {
