@@ -23,6 +23,13 @@ fn init_dict(length: u64) -> Felt252Dict<felt252> {
     return balances;
 }
 
+fn fib(a: felt252, b: felt252, n: felt252) -> felt252 {
+    match n {
+        0 => a,
+        _ => fib(b, a + b, n - 1),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{factorial, init_dict};
@@ -41,5 +48,11 @@ mod tests {
         let mut dict = init_dict(1000001);
         let last = dict.get(1000000);
         assert_eq!(last, 1000000, "invalid result");
+    }
+
+    #[test]
+    fn test_fibonacci() {
+        assert_eq!(fib(0, 1, 10), 55, 'invalid result');
+        assert_eq!(fib(0, 1, 2000000), 0x79495858064f7881b9eff3a923642b2990b5a4342da5470eb2251df58d9acfb, 'invalid result');
     }
 }
