@@ -67,7 +67,7 @@ pub use syscall_handler::syscall_handler_offset;
 #[must_use]
 pub fn run_test(
     case: Arc<TestCaseWithResolvedConfig>,
-    _casm_program: Arc<AssembledProgramWithDebugInfo>,
+    casm_program: Arc<AssembledProgramWithDebugInfo>,
     aot_executor: Arc<AotNativeExecutor>,
     forge_config: Arc<ForgeConfig>,
     versioned_program_path: Arc<Utf8PathBuf>,
@@ -82,18 +82,21 @@ pub fn run_test(
             return TestCaseSummary::Interrupted {};
         }
 
-        let run_result = run_native_test_case(
-            &case,
-            &aot_executor,
-            &RuntimeConfig::from(&forge_config.test_runner_config),
-            None,
-        );
-        // let run_result = run_test_case(
-        //     &case,
-        //     &_casm_program,
-        //     &RuntimeConfig::from(&forge_config.test_runner_config),
-        //     None,
-        // );
+        let run_result = if forge_config.test_runner_config.use_native {
+            run_native_test_case(
+                &case,
+                &aot_executor,
+                &RuntimeConfig::from(&forge_config.test_runner_config),
+                None,
+            )
+        } else {
+            run_test_case(
+                &case,
+                &casm_program,
+                &RuntimeConfig::from(&forge_config.test_runner_config),
+                None,
+            )
+        };
 
         if send.is_closed() {
             return TestCaseSummary::Interrupted {};
@@ -456,7 +459,7 @@ pub fn run_native_test_case(
         extension: ForgeExtension {
             environment_variables: runtime_config.environment_variables,
             contracts_data: runtime_config.contracts_data,
-            fuzzer_rng,
+            fuzzer_rng: fuzzer_rng.cloned(),
             experimental_oracles_enabled: runtime_config.experimental_oracles,
             oracle_hint_service: OracleHintService::default(),
         },
